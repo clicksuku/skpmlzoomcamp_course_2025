@@ -290,19 +290,60 @@ jupytext --to py SKP_MidTerm_Project_Classification.ipynb
 
 ## 8. Requirements & Installation
 
-### PIPFile
-```ini
-[[source]]
-url = "https://pypi.org/simple"
-verify_ssl = true
-name = "pypi"
+### Requirements.txt
+```txt
+pandas
+numpy
+scikit-learn
+xgboost
+matplotlib
+seaborn
+jupyter
+jupytext
+fastapi
+uvicorn
+pydantic
+python-multipart
+pytest
+black
+flake8
 
-[packages]
-pandas = ">=1.5.0"
-numpy = ">=1.21.0"
-scikit-learn = ">=1.0.0"
-xgboost = ">=1.5.0"
-matplotlib = ">=3.5.0"
+```
+
+### Installation Steps
+```
+git clone https://github.com/clicksuku/skpmlzoomcamp_course_2025.git
+bash -v setup.sh
+```
+
+### Local Deployment and Run
+```bash
+cd _scripts
+source mlenv/bin/activate
+uvicorn api_model_server:app --host 0.0.0.0 --port 8000
+```
+
+### Local Testing
+```bash
+
+cd _scripts
+source mlenv/bin/activate
+python api_client.py
+```
+
+## 9. Docker Deployment
+
+### Dockerfile
+```dockerfile
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Copy requirements and install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+```
 seaborn = ">=0.11.0"
 jupyter = ">=1.0.0"
 jupytext = ">=1.14.0"
