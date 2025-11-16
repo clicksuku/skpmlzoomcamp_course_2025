@@ -295,19 +295,16 @@ jupytext --to py SKP_MidTerm_Project_Classification.ipynb
 pandas
 numpy
 scikit-learn
-xgboost
-matplotlib
-seaborn
-jupyter
+scipy
+threadpoolctl
 jupytext
+seaborn
+uv
+xgboost
 fastapi
+requests
 uvicorn
-pydantic
-python-multipart
-pytest
-black
-flake8
-
+tqdm
 ```
 
 ### Installation Steps
@@ -338,102 +335,35 @@ python api_client.py
 FROM python:3.9-slim
 
 WORKDIR /app
+RUN mkdir -p /app/_models
 
-# Copy requirements and install dependencies
-COPY requirements.txt .
+COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
-```
-seaborn = ">=0.11.0"
-jupyter = ">=1.0.0"
-jupytext = ">=1.14.0"
-fastapi = ">=0.68.0"
-uvicorn = ">=0.15.0"
-pydantic = ">=1.8.0"
-python-multipart = ">=0.0.5"
+COPY *.bin /app/_models/
+COPY *.py /app/
 
-[dev-packages]
-pytest = ">=6.0.0"
-black = ">=21.0.0"
-flake8 = ">=3.9.0"
-
-[requires]
-python_version = "3.9"
-```
-### Installation Steps
-```
-# Using pipenv
-pip install pipenv
-pipenv install
-pipenv shell
-
+CMD ["uvicorn", "api_model_server:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-## 9. Docker Deployment
-
-### Dockerfile
-```dockerfile
-FROM python:3.9-slim
-
-WORKDIR /app
-
-# Copy requirements and install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy application code
-COPY . .
-COPY _models/ ./_models/
-COPY *.csv ./data/
-
-# Create necessary directories
-RUN mkdir -p _models data
-
-# Expose port
-EXPOSE 8000
-
-# Start FastAPI server
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-### Docker Compose (docker-compose.yml)
-```yaml
-version: '3.8'
-
-services:
-  movie-ml-api:
-    build: .
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./_models:/app/_models
-      - ./data:/app/data
-    environment:
-      - PYTHONPATH=/app
-    restart: unless-stopped
-
-  # Optional: Add Redis for caching
-  redis:
-    image: redis:alpine
-    ports:
-      - "6379:6379"
-```
 
 ### Deployment Commands
+Go to the path where Dockerfile is present
+
 ```bash
 # Build and run
-docker build -t movie-ml-api .
-docker run -p 8000:8000 movie-ml-api
+docker build -t skpmlzoomcamp .
+docker run -p 8000:8000 skpmlzoomcamp:latest
 
-# Using docker-compose
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
 ```
+### Testing
+
+```bash
+cd _scripts
+source mlenv/bin/activate
+python api_client.py
+```
+
 
 ## 10. FastAPI Model Serving & Testing
 
