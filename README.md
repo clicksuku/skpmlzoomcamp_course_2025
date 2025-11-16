@@ -276,33 +276,15 @@ pip install jupytext
 
 ### Conversion Commands
 
-**Convert notebook to Python script (percent format)**:
-```bash
-jupytext --to py:percent SKP_MidTerm_Project_Regression.ipynb
-jupytext --to py:percent SKP_MidTerm_Project_Classification.ipynb
-```
-
 **Convert notebook to Python script (light format)**:
 ```bash
 jupytext --to py SKP_MidTerm_Project_Regression.ipynb
 jupytext --to py SKP_MidTerm_Project_Classification.ipynb
 ```
 
-**Alternative using nbconvert**:
-```bash
-jupyter nbconvert --to script SKP_MidTerm_Project_Regression.ipynb
-jupyter nbconvert --to script SKP_MidTerm_Project_Classification.ipynb
-```
-
 ### Output Files
 - `SKP_MidTerm_Project_Regression.py`
 - `SKP_MidTerm_Project_Classification.py`
-
-### Advantages of Jupytext
-- Preserves cell structure with `# %%` markers
-- Maintains markdown comments as docstrings
-- Allows bidirectional conversion (py ↔ ipynb)
-- Better version control compatibility
 
 ---
 
