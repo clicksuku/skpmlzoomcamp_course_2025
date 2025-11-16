@@ -1,16 +1,41 @@
-# Movie Revenue Prediction & Hit Classification System
+# TMDB Movie Revenue Prediction & Hit Classification System
 
 ## 1. Problem Statement
 
-This project addresses two key challenges in the film industry:
-- **Regression Problem**: Predict movie revenue based on features like budget, popularity, runtime, and ratings
-- **Classification Problem**: Classify whether a movie will be a "hit" (revenue > 2x budget)
+A comprehensive Machine Learning project for predicting movie revenue and classifying movie success using the TMDB (The Movie Database) dataset. This project implements both regression and classification models with deployment via FastAPI and Docker.
+
+### Regression Problem
+Predict the **revenue** of movies based on various features such as budget, popularity, runtime, vote metrics, and genre information. This helps production companies and investors estimate potential returns on investment for upcoming films.
+
+### Classification Problem
+Classify whether a movie will be **financially successful** (revenue exceeds budget by a significant margin) using movie metadata. This binary classification helps stakeholders make go/no-go decisions on film projects.
+
+---
 
 ## 2. Dataset Details
 
-### Source
-- **TMDB (The Movie Database)** with 5,000 movies
-- **Files**: `5kMovies.csv`, `5kCredits.csv`
+### Data Source
+- **Dataset**: TMDB 5000 Movies Dataset
+- **Files**: 
+  - `5kMovies.csv` - Movie metadata
+  - `5kCredits.csv` - Credits information
+- **Total Records**: ~4,800 movies after data cleanup
+
+### Dataset in Columns
+
+| Feature | Type | Description |
+|---------|------|-------------|
+| `id` | Integer | Unique movie identifier |
+| `title` | String | Movie title |
+| `original_language` | String | Language of the movie |
+| `genres` | JSON/String | Movie genres (normalized to binary features) |
+| `release_date` | Date | Release date (converted to release_year) |
+| `runtime` | Float | Movie duration in minutes |
+| `popularity` | Float | Popularity score |
+| `vote_count` | Integer | Number of votes |
+| `vote_average` | Float | Average rating |
+| `budget` | Integer | Production budget |
+| `revenue` | Integer | Total revenue (target for regression) |
 
 ### Features Used
 **Numerical Features**:
@@ -28,6 +53,13 @@ This project addresses two key challenges in the film industry:
 **Genre Features** (One-hot encoded):
 - Action, Adventure, Fantasy, Science Fiction, Thriller, Comedy
 
+### Data Preprocessing
+- **Missing Value Handling**: Categorical features with missing values removed; numerical features filled with 0
+- **Genre Normalization**: JSON genre data converted to binary features for 6 major genres (Action, Adventure, Fantasy, Science Fiction, Thriller, Comedy)
+- **Date Processing**: Release dates converted to release year
+- **Log Transformation**: Applied to budget and revenue for better model performance
+- **Feature Engineering**: Created binary success indicator for classification
+
 ## 3. Regression Model
 
 ### Target Variable
@@ -41,6 +73,10 @@ This project addresses two key challenges in the film industry:
 2. **Random Forest Regressor**
 3. **Gradient Boosting Regressor**
 4. **XGBoost Regressor**
+
+### Feature Selection
+- **Numerical Features**: `log_budget`, `popularity`, `runtime`, `vote_avg`, `vote_count`, `release_year`
+- **Categorical Features**: Genre binary indicators **(Not used)**
 
 ### Model Selection Process
 - **Evaluation Metrics**: RMSE, R² Score, MAE
@@ -56,9 +92,57 @@ GradientBoostingRegressor(
     random_state=42,
     loss='squared_error'
 )
+
 ```
+### Key Findings
+- Log-transformed budget shows strongest correlation (0.657) with revenue
+- Random Forest identifies `popularity` as most important feature (0.416)
+- Feature importance differs between linear and tree-based models due to their ability to capture non-linear relationships
+
 
 ## 4. Model Comparison & Selection
+
+The optimal regression model was selected through systematic comparison:
+
+1. **Linear Regression** (Baseline)
+   - Simple interpretability
+   - Assumes linear relationships
+   - Best for understanding feature correlations
+
+2. **Random Forest Regressor**
+   - Handles non-linear relationships
+   - Provides feature importance scores
+   - Reduces overfitting through ensemble averaging
+   - **Parameters tuned**: `n_estimators`, `max_depth`, `min_samples_split`
+
+3. **Gradient Boosting Regressor**
+   - Sequential error correction
+   - Often achieves best performance
+   - **Parameters tuned**: `learning_rate`, `n_estimators`, `max_depth`
+
+### Hyperparameter Tuning with GridSearchCV
+
+```python
+param_grid = {
+    'n_estimators': [10, 50, 100, 200],
+    'max_depth': [5, 10, 20, None],
+    'min_samples_split': [2, 5, 10]
+}
+
+grid_search = GridSearchCV(
+    RandomForestRegressor(random_state=42),
+    param_grid,
+    cv=5,
+    scoring='neg_mean_squared_error',
+    n_jobs=-1
+)
+```
+
+### Model Selection Criteria
+- **Cross-validation score** (5-fold CV)
+- **Test set performance** (RMSE, R², MAE)
+- **Training time** and **prediction speed**
+- **Feature importance interpretability**
 
 ### Performance Comparison
 ```
@@ -82,14 +166,30 @@ XGB Regression     1.2637  0.6552  0.8519
 
 ## 5. Classification Model
 
+### Objective
+Classify movies as "successful" or "unsuccessful" based on revenue-to-budget ratio.
+
+### Target Variable Creation
+```python
+# Success defined as revenue > 1.5 × budget
+df['success'] = (df['revenue'] > df['budget'] * 1.5).astype(int)
+```
+
 ### Target Variable
 - `is_hit`: Binary classification (True/False)
 
 ### Features Used
 - `runtime`, `popularity`, `vote_avg`, `log_budget`
 
-### Model Used
-- **Logistic Regression** with L2 regularization
+### Models Implemented
+1. **Logistic Regression** - Linear classifier with regularization
+2. **Decision Tree Classifier** - Non-linear decision boundaries
+
+### Performance Metrics
+- **F1 Score**: Harmonic mean of precision and recall
+- **ROC-AUC Score**: Area under the ROC curve
+- **Confusion Matrix**: True/False Positives and Negatives
+- **Classification Report**: Precision, recall, F1 for each class
 
 ### Evaluation Metrics
 - **AUC-ROC**: Area Under ROC Curve
@@ -98,7 +198,46 @@ XGB Regression     1.2637  0.6552  0.8519
 
 ## 6. K-Fold Cross Validation for Optimal C
 
-### Process Description
+### Why KFold?
+K-Fold cross-validation ensures robust model evaluation by:
+- Preventing overfitting to a single train-test split
+- Utilizing the entire dataset for both training and validation
+- Providing more stable performance estimates
+
+### Implementation for Logistic Regression
+
+```python
+from sklearn.model_selection import KFold
+
+# Define K-Fold with 5 splits
+kfold = KFold(n_splits=5, shuffle=True, random_state=42)
+
+# Test different C values (inverse of regularization strength)
+C_values = [0.001, 0.01, 0.1, 1, 10, 100]
+
+for C in C_values:
+    scores = []
+    for train_idx, val_idx in kfold.split(X):
+        X_train, X_val = X[train_idx], X[val_idx]
+        y_train, y_val = y[train_idx], y[val_idx]
+        
+        model = LogisticRegression(C=C, max_iter=1000)
+        model.fit(X_train, y_train)
+        score = roc_auc_score(y_val, model.predict_proba(X_val)[:, 1])
+        scores.append(score)
+    
+    print(f"C={C}: Mean AUC = {np.mean(scores):.4f}")
+```
+
+### Optimal C Selection
+- **Smaller C**: Stronger regularization (simpler model, less overfitting)
+- **Larger C**: Weaker regularization (more complex model, potential overfitting)
+- **Optimal C**: Value that maximizes mean validation AUC across all folds
+
+### Result Interpretation
+The C value with the highest mean cross-validation score is selected for the final model, ensuring generalization to unseen data.
+
+### Implementation
 ```python
 # 5-Fold Cross Validation
 n_splits = 5
@@ -126,33 +265,46 @@ Full Cross Validation Results
 - **Best C**: 1 (provides optimal regularization strength)
 - **Rationale**: Balances bias-variance tradeoff, prevents overfitting
 
-## 7. Converting Jupyter Notebook to Python Script
+---
 
+## 7. Converting Jupyter Notebooks to Python Scripts with Jupytext
 ### Installation
+
 ```bash
 pip install jupytext
 ```
 
 ### Conversion Commands
+
+**Convert notebook to Python script (percent format)**:
 ```bash
-# Convert single notebook
-jupytext --to py notebook.ipynb
-
-# Convert all notebooks in directory
-jupytext --to py *.ipynb
-
-# Set percent format (recommended)
-jupytext --set-formats ipynb,py:percent notebook.ipynb
-
-# Convert back to notebook
-jupytext --to notebook script.py
+jupytext --to py:percent SKP_MidTerm_Project_Regression.ipynb
+jupytext --to py:percent SKP_MidTerm_Project_Classification.ipynb
 ```
 
-### File Structure After Conversion
+**Convert notebook to Python script (light format)**:
+```bash
+jupytext --to py SKP_MidTerm_Project_Regression.ipynb
+jupytext --to py SKP_MidTerm_Project_Classification.ipynb
 ```
-<img width="397" height="600" alt="image" src="https://github.com/user-attachments/assets/0b5da70a-7c7f-42d3-8264-c095c89b341d" />
 
+**Alternative using nbconvert**:
+```bash
+jupyter nbconvert --to script SKP_MidTerm_Project_Regression.ipynb
+jupyter nbconvert --to script SKP_MidTerm_Project_Classification.ipynb
 ```
+
+### Output Files
+- `SKP_MidTerm_Project_Regression.py`
+- `SKP_MidTerm_Project_Classification.py`
+
+### Advantages of Jupytext
+- Preserves cell structure with `# %%` markers
+- Maintains markdown comments as docstrings
+- Allows bidirectional conversion (py ↔ ipynb)
+- Better version control compatibility
+
+---
 
 ## 8. Requirements & Installation
 
@@ -185,37 +337,13 @@ flake8 = ">=3.9.0"
 [requires]
 python_version = "3.9"
 ```
-
-### requirements.txt (Alternative)
-```txt
-pandas>=1.5.0
-numpy>=1.21.0
-scikit-learn>=1.0.0
-xgboost>=1.5.0
-matplotlib>=3.5.0
-seaborn>=0.11.0
-jupyter>=1.0.0
-jupytext>=1.14.0
-fastapi>=0.68.0
-uvicorn>=0.15.0
-pydantic>=1.8.0
-python-multipart>=0.0.5
-```
-
 ### Installation Steps
-```bash
-# Using pip
-pip install -r requirements.txt
-
+```
 # Using pipenv
 pip install pipenv
 pipenv install
 pipenv shell
 
-# Using conda
-conda create -n movie-ml python=3.9
-conda activate movie-ml
-pip install -r requirements.txt
 ```
 
 ## 9. Docker Deployment
@@ -428,35 +556,10 @@ for index,row in df_new_data.iterrows():
 
 1. **Start the API Server**:
 ```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn api_model_server:app --reload --host 0.0.0.0 --port 8000
 ```
 
 2. **Run Client Tests**:
 ```bash
-python test_client.py
+python api_client.py
 ```
-
-### Example API Calls
-
-**Single Prediction**:
-```bash
-curl -X POST "http://localhost:8000/predict" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "runtime": 120.0,
-       "popularity": 25.5,
-       "vote_avg": 7.2,
-       "budget": 50000000
-     }'
-```
-
-**Batch Prediction**:
-```bash
-curl -X POST "http://localhost:8000/batch_predict" \
-     -H "Content-Type: application/json" \
-     -d '[{
-       "runtime": 102.0,
-       "popularity": 14.79,
-       "vote_avg": 7.5,
-       "budget": 8000000
-     }]'
