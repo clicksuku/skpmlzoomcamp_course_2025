@@ -1,0 +1,13 @@
+pandas
+numpy
+scikit-learn
+scipy
+threadpoolctl
+jupytext
+seaborn
+uv
+xgboost
+fastapi
+requests
+uvicorn
+tqdm
