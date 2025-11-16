@@ -5,10 +5,10 @@ from FilmFeature import FilmFeature
 
 app = FastAPI()
 
-with open('/Users/sundar/Documents/Professional/Code/gitclicksuku/skpmlzoomcamp/MidYearProject/_Models/classification_model.bin', 'rb') as f_in: # very important to use 'rb' here, it means read-binary 
+with open('_models/classification_model.bin', 'rb') as f_in: # very important to use 'rb' here, it means read-binary 
     model_classification, dv_classification = pickle.load(f_in)
 
-with open('/Users/sundar/Documents/Professional/Code/gitclicksuku/skpmlzoomcamp/MidYearProject/_Models/regression_model.bin', 'rb') as f_in: # very important to use 'rb' here, it means read-binary 
+with open('_models/regression_model.bin', 'rb') as f_in: # very important to use 'rb' here, it means read-binary 
     model_regression = pickle.load(f_in)
 
 
