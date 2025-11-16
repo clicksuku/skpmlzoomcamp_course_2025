@@ -112,17 +112,18 @@ C_values = [0.001, 0.01, 0.1, 0.5, 1, 5, 10]
 
 ### Results
 ```
-C=0.001 0.XXX +- 0.XXXXXX
-C=0.01  0.XXX +- 0.XXXXXX
-C=0.1   0.XXX +- 0.XXXXXX  ← Best performing
-C=0.5   0.XXX +- 0.XXXXXX
-C=1     0.XXX +- 0.XXXXXX
-C=5     0.XXX +- 0.XXXXXX
-C=10    0.XXX +- 0.XXXXXX
+Full Cross Validation Results
+   param_C  mean_test_score  std_test_score  rank_test_score
+0    0.001         0.780968        0.018832                6
+1    0.010         0.784742        0.018426                5
+2    0.100         0.799354        0.016126                4
+3    1.000         0.805223        0.015208                1
+4   10.000         0.804724        0.015922                2
+5  100.000         0.804656        0.015973                3
 ```
 
 ### Optimal Parameter
-- **Best C**: 0.1 (provides optimal regularization strength)
+- **Best C**: 1 (provides optimal regularization strength)
 - **Rationale**: Balances bias-variance tradeoff, prevents overfitting
 
 ## 7. Converting Jupyter Notebook to Python Script
@@ -149,14 +150,8 @@ jupytext --to notebook script.py
 
 ### File Structure After Conversion
 ```
-project/
-├── classification.py          # Converted from .ipynb
-├── regression.py             # Converted from .ipynb
-├── requirements.txt
-├── Dockerfile
-└── src/
-    ├── models/               # Trained model binaries
-    └── data/                 # Dataset files
+
+
 ```
 
 ## 8. Requirements & Installation
