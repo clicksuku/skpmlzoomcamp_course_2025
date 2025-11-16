@@ -508,10 +508,6 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 python test_client.py
 ```
 
-3. **Access API Documentation**:
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-
 ### Example API Calls
 
 **Single Prediction**:
@@ -536,8 +532,3 @@ curl -X POST "http://localhost:8000/batch_predict" \
        "vote_avg": 7.5,
        "budget": 8000000
      }]'
-```
-
-This comprehensive setup provides a complete machine learning pipeline from data processing to model deployment with Docker and FastAPI.
-<img width="468" height="641" alt="image" src="https://github.com/user-attachments/assets/a907a0d2-090e-4b15-8856-fc6e28ccfcd0" />
-
