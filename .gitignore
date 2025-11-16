@@ -209,3 +209,6 @@ __marimo__/
 # Misc
 .DS_Store
 mlenv
+_models
+SKP_MidTerm_Project_Classification.py
+SKP_MidTerm_Project_Regression.py
