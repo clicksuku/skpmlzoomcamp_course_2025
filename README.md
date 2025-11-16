@@ -150,7 +150,7 @@ jupytext --to notebook script.py
 
 ### File Structure After Conversion
 ```
-
+<img width="397" height="600" alt="image" src="https://github.com/user-attachments/assets/0b5da70a-7c7f-42d3-8264-c095c89b341d" />
 
 ```
 
@@ -286,209 +286,142 @@ docker-compose down
 
 ## 10. FastAPI Model Serving & Testing
 
-### FastAPI Application (main.py)
+### FastAPI Application (api_model_server.py)
 ```python
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
 import pickle
-import numpy as np
 import pandas as pd
-from typing import List, Optional
+from fastapi import FastAPI
+from FilmFeature import FilmFeature
 
-app = FastAPI(title="Movie Revenue Prediction API", 
-              description="API for predicting movie revenue and hit classification",
-              version="1.0.0")
+app = FastAPI()
 
-# Pydantic models for request validation
-class MovieFeatures(BaseModel):
-    runtime: float
-    popularity: float
-    vote_avg: float
-    budget: float
+with open('/Users/sundar/Documents/Professional/Code/gitclicksuku/skpmlzoomcamp/MidYearProject/_Models/classification_model.bin', 'rb') as f_in: # very important to use 'rb' here, it means read-binary 
+    model_classification, dv_classification = pickle.load(f_in)
 
-class PredictionResponse(BaseModel):
-    predicted_revenue: float
-    predicted_revenue_millions: float
-    is_hit: bool
-    hit_probability: float
-    budget_millions: float
+with open('/Users/sundar/Documents/Professional/Code/gitclicksuku/skpmlzoomcamp/MidYearProject/_Models/regression_model.bin', 'rb') as f_in: # very important to use 'rb' here, it means read-binary 
+    model_regression = pickle.load(f_in)
 
-# Load models
-try:
-    with open('_models/movie_revenue_gb_model.bin', 'rb') as f:
-        reg_model = pickle.load(f)
-    
-    with open('classification_model.bin', 'rb') as f:
-        class_model, dv = pickle.load(f)
-except FileNotFoundError:
-    print("Model files not found. Please ensure models are trained and saved.")
-    reg_model = None
-    class_model = None
-    dv = None
 
 @app.get("/")
 async def root():
-    return {"message": "Movie Revenue Prediction API", "status": "active"}
+    return {"message": "Hello World"}
 
-@app.get("/health")
-async def health_check():
-    models_loaded = reg_model is not None and class_model is not None
-    return {
-        "status": "healthy" if models_loaded else "models not loaded",
-        "regression_model_loaded": reg_model is not None,
-        "classification_model_loaded": class_model is not None
-    }
+@app.post("/predict_revenue")
+async def predict_revenue(request: FilmFeature):
+    x = pd.DataFrame([request.dict()])
+    y_pred = model_regression.predict(x)
+    return {"revenue": float(y_pred)}
 
-@app.post("/predict", response_model=PredictionResponse)
-async def predict_revenue(movie: MovieFeatures):
-    if reg_model is None or class_model is None:
-        raise HTTPException(status_code=500, detail="Models not loaded")
-    
-    try:
-        # Prepare features for regression
-        log_budget = np.log1p(movie.budget)
-        features_df = pd.DataFrame([{
-            'runtime': movie.runtime,
-            'popularity': movie.popularity,
-            'vote_avg': movie.vote_avg,
-            'log_budget': log_budget
-        }])
-        
-        # Regression prediction
-        log_revenue_pred = reg_model.predict(features_df)[0]
-        revenue_pred = np.expm1(log_revenue_pred)
-        
-        # Classification prediction
-        feature_dict = {
-            'runtime': movie.runtime,
-            'popularity': movie.popularity,
-            'vote_avg': movie.vote_avg,
-            'log_budget': log_budget
-        }
-        X_class = dv.transform(feature_dict)
-        hit_probability = class_model.predict_proba(X_class)[0, 1]
-        is_hit = hit_probability > 0.5
-        
-        return PredictionResponse(
-            predicted_revenue=float(revenue_pred),
-            predicted_revenue_millions=float(revenue_pred / 1e6),
-            is_hit=bool(is_hit),
-            hit_probability=float(hit_probability),
-            budget_millions=float(movie.budget / 1e6)
-        )
-        
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Prediction error: {str(e)}")
 
-@app.post("/batch_predict")
-async def batch_predict(movies: List[MovieFeatures]):
-    predictions = []
-    for movie in movies:
-        prediction = await predict_revenue(movie)
-        predictions.append(prediction.dict())
-    return {"predictions": predictions}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+@app.post("/predict_hit")
+async def predict_hit(request: FilmFeature):
+    x = dv_classification.transform([request.dict()])
+    y_pred = model_classification.predict_proba(x)[0, 1]
+    #y_pred_status = model_classification.predict(x)
+    return {"probability": float(y_pred)}
 ```
 
 ### API Client Test Script (test_client.py)
 ```python
 import requests
-import json
+import pandas as pd
+import numpy as np
 
-# API base URL
-BASE_URL = "http://localhost:8000"
+url_revenue = "http://127.0.0.1:8000/predict_revenue"
+url_hit = "http://127.0.0.1:8000/predict_hit"
 
-def test_health():
-    """Test API health endpoint"""
-    response = requests.get(f"{BASE_URL}/health")
-    print("Health Check:", response.json())
-    return response.status_code == 200
 
-def test_single_prediction():
-    """Test single movie prediction"""
-    movie_data = {
-        "runtime": 120.0,
-        "popularity": 25.5,
-        "vote_avg": 7.2,
-        "budget": 50000000  # $50M
-    }
-    
-    response = requests.post(f"{BASE_URL}/predict", json=movie_data)
-    
-    if response.status_code == 200:
-        result = response.json()
-        print("Single Prediction Result:")
-        print(f"  Predicted Revenue: ${result['predicted_revenue_millions']:.2f}M")
-        print(f"  Budget: ${result['budget_millions']:.2f}M")
-        print(f"  Is Hit: {result['is_hit']}")
-        print(f"  Hit Probability: {result['hit_probability']:.2%}")
-        return result
+#interested_features = ['runtime', 'popularity', 'vote_avg','log_budget']
+
+films = [
+  {
+    "runtime": 102.0,
+    "popularity": 14.793177,
+    "vote_avg": 7.5,
+    "log_budget": 15.894952
+  },
+  {
+    "runtime": 118.0,
+    "popularity": 28.670477,
+    "vote_avg": 5.7,
+    "log_budget": 17.370859
+  },
+  {
+    "runtime": 112.0,
+    "popularity": 9.969624,
+    "vote_avg": 6.3,
+    "log_budget": 16.38046
+  },
+  {
+    "runtime": 110.0,
+    "popularity": 46.078371,
+    "vote_avg": 5.9,
+    "log_budget": 17.453097
+  },
+  {
+    "runtime": 127.0,
+    "popularity": 21.685719,
+    "vote_avg": 6.7,
+    "log_budget": 17.909855
+  }
+]
+
+films_hit = [
+  {
+    "runtime": 102.0,
+    "popularity": 14.793177,
+    "vote_avg": 7.5,
+    "log_budget": 15.894952
+  },
+  {
+    "runtime": 118.0,
+    "popularity": 28.670477,
+    "vote_avg": 5.7,
+    "log_budget": 17.370859
+  },
+  {
+    "runtime": 112.0,
+    "popularity": 9.969624,
+    "vote_avg": 6.3,
+    "log_budget": 16.38046
+  },
+  {
+    "runtime": 110.0,
+    "popularity": 46.078371,
+    "vote_avg": 5.9,
+    "log_budget": 17.453097
+  },
+  {
+    "runtime": 127.0,
+    "popularity": 21.685719,
+    "vote_avg": 6.7,
+    "log_budget": 17.909855
+  }
+]
+
+
+df_new_data = pd.DataFrame(films)
+
+for index,row in df_new_data.iterrows():
+    print("runtime", row['runtime'])
+    print("popularity", row['popularity'])
+    print("Vote_average", row['vote_avg'])
+    print("log_budget", row['log_budget'])
+    budget=np.expm1(row['log_budget'])/np.power(10,6)
+    print(f"budget: ${budget:.2f}M")
+    predicted_revenue = requests.post(url_revenue, json=films[index])
+    revenue=np.expm1(predicted_revenue.json()['revenue'])/np.power(10,6)
+    print(f"Revenue: ${revenue:.2f}M")
+
+    is_hit = requests.post(url_hit, json=films[index])
+    probability = is_hit.json()['probability']
+    print("Probability", probability)
+    if probability >= 0.5:
+        print("Hit")
     else:
-        print(f"Error: {response.status_code} - {response.text}")
-        return None
-
-def test_batch_predictions():
-    """Test batch predictions with multiple movies"""
-    movies = [
-        {
-            "runtime": 102.0,
-            "popularity": 14.79,
-            "vote_avg": 7.5,
-            "budget": 8000000
-        },
-        {
-            "runtime": 118.0,
-            "popularity": 28.67,
-            "vote_avg": 5.7,
-            "budget": 35000000
-        },
-        {
-            "runtime": 127.0,
-            "popularity": 21.69,
-            "vote_avg": 6.7,
-            "budget": 60000000
-        }
-    ]
+        print("Not a Hit")
     
-    response = requests.post(f"{BASE_URL}/batch_predict", json=movies)
-    
-    if response.status_code == 200:
-        results = response.json()
-        print("\nBatch Prediction Results:")
-        for i, pred in enumerate(results['predictions']):
-            print(f"Movie {i+1}:")
-            print(f"  Revenue: ${pred['predicted_revenue_millions']:.2f}M")
-            print(f"  Budget: ${pred['budget_millions']:.2f}M")
-            print(f"  Is Hit: {pred['is_hit']} (Prob: {pred['hit_probability']:.2%})")
-            print()
-        return results
-    else:
-        print(f"Error: {response.status_code} - {response.text}")
-        return None
-
-if __name__ == "__main__":
-    print("Testing Movie Prediction API...")
-    
-    # Test health endpoint
-    if test_health():
-        print("✅ API is healthy")
-        
-        # Test single prediction
-        print("\n" + "="*50)
-        print("Testing Single Prediction...")
-        test_single_prediction()
-        
-        # Test batch predictions
-        print("\n" + "="*50)
-        print("Testing Batch Predictions...")
-        test_batch_predictions()
-        
-    else:
-        print("❌ API health check failed")
-        print("Make sure the API server is running on http://localhost:8000")
+    print("\n\n")
 ```
 
 ### Running the Tests
