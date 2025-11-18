@@ -14,6 +14,9 @@ Classify whether a movie will be **financially successful** (revenue exceeds bud
 
 ## 2. Installation and Running the Project
 
+- Run the setup.sh script to set up the virtual environment and install dependencies
+- Activate the virtual environment and run the training scripts
+
 
 ### Installation Steps
 ```
@@ -26,44 +29,48 @@ bash -v setup.sh
 
 ### Local Deployment and Run
 ```bash
-cd Script
 source mlenv/bin/activate
+```
+
+```bash
+cd Script
+```
+
+```bash
 uvicorn api_model_server:app --host 0.0.0.0 --port 8000
 ```
 
 ### Local Testing
 ```bash
-
-cd Script
 source mlenv/bin/activate
+```
+
+```bash
+cd Script
+```
+
+```bash
 python api_client.py
 ```
 
 ### Docker Deployment and testing
 
-### Dockerfile
-```dockerfile
-FROM python:3.9-slim
-
-WORKDIR /app
-RUN mkdir -p /app/_models
-
-COPY requirements.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY *.bin /app/_models/
-COPY *.py /app/
-
-CMD ["uvicorn", "api_model_server:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-
 ### Deployment Commands
 Go to the path where Dockerfile is present
 
+
 ```bash
-# Build and run
+cd <DOCKER FOLDER>
+```
+
+
+```bash
+# Build
 docker build -t skpmlzoomcamp .
+```
+
+```bash
+# Run
 docker run -p 8000:8000 skpmlzoomcamp:latest
 
 ```
@@ -71,37 +78,22 @@ docker run -p 8000:8000 skpmlzoomcamp:latest
 ### Testing
 
 ```bash
-cd Script
 source mlenv/bin/activate
-python api_client.py
 ```
 
-
-### Installation
-- Run the setup.sh script to set up the virtual environment and install dependencies
-- Activate the virtual environment and run the training scripts
-
-### Running the Project
-- Run the api_model_server.py script to start the FastAPI server
-- Use the predict_revenue and predict_hit endpoints to make predictions
-
-
-### Running the Tests
-
-1. **Start the API Server**:
 ```bash
-uvicorn api_model_server:app --reload --host 0.0.0.0 --port 8000
+cd Script
 ```
 
-2. **Run Client Tests**:
 ```bash
 python api_client.py
 ```
+
 
 
 -----
 
-## 2. Dataset Details and Project Files Details
+## 3. Dataset Details and Project Files Details
 
 ### Project Files
 
@@ -550,9 +542,192 @@ for index,row in df_new_data.iterrows():
     print("\n\n")
 ```
 
+## 10. Kubectl deployment local
+
+## Kubernetes manifests (copy/paste)
+
+Create the `k8s/` folder and add these YAMLs.
+
+### 1 Revenue Deployment + Service (`k8s/revenue-deployment.yaml`)
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tmdb-revenue
+  labels:
+    app: tmdb-revenue
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: tmdb-revenue
+  template:
+    metadata:
+      labels:
+        app: tmdb-revenue
+    spec:
+      containers:
+      - name: tmdb-revenue
+        image: tmdb/revenue:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+          requests:
+            cpu: "0.25"
+            memory: "256Mi"
+        # mount models from a volume if you prefer
+        # volumeMounts:
+        # - name: models
+        #   mountPath: /models
+      # volumes:
+      # - name: models
+      #   hostPath:
+      #     path: /home/you/models/revenue   # local path (minikube only)
+      #     type: Directory
+```
+
+### 2 Revenue Service (`k8s/revenue-service.yaml`)
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: tmdb-revenue-svc
+spec:
+  selector:
+    app: tmdb-revenue
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+  type: NodePort   # use ClusterIP in production, NodePort useful for local
+```
+
+### 3 Hit Deployment + Service (`k8s/hit-deployment.yaml` and `k8s/hit-service.yaml`)
+
+Replace names and image:
+
+```yaml
+# hit-deployment.yaml (same structure as revenue but image tmdb/hit:v1, name tmdb-hit)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tmdb-hit
+  labels:
+    app: tmdb-hit
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: tmdb-hit
+  template:
+    metadata:
+      labels:
+        app: tmdb-hit
+    spec:
+      containers:
+      - name: tmdb-hit
+        image: tmdb/hit:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+          requests:
+            cpu: "0.25"
+            memory: "256Mi"
+```
+
+`hit-service.yaml` same as revenue-service but name `tmdb-hit-svc` and selector `app: tmdb-hit`.
 
 
-## 10. Evaluation 
+
+# 4. Apply manifests & run
+
+From project root:
+
+```bash
+kubectl apply -f k8s/revenue-deployment.yaml
+kubectl apply -f k8s/revenue-service.yaml
+kubectl apply -f k8s/hit-deployment.yaml
+kubectl apply -f k8s/hit-service.yaml
+
+# optional ingress
+kubectl apply -f k8s/ingress.yaml
+
+# optional hpa
+kubectl apply -f k8s/hpa.yaml
+```
+
+Check pods:
+
+```bash
+kubectl get pods
+kubectl get svc
+kubectl get deploy
+kubectl describe pod <pod-name>  # debug
+kubectl logs <pod-name> -c tmdb-revenue
+```
+
+---
+
+## If using **NodePort** (services above)
+
+Find NodePort:
+
+```bash
+kubectl get svc tmdb-revenue-svc -o yaml
+# or:
+kubectl get svc
+```
+
+```bash
+minikube service tmdb-revenue-svc --url
+# returns URL like http://192.168.xx.xx:30080
+```
+
+```bash
+curl -X POST http://<ip>:<nodeport>/predict_revenue -H "Content-Type: application/json" \
+  -d '{"budget":10000000,"popularity":12.3,"runtime":120,"vote_average":7.8,"vote_count":5000}'
+```
+
+```bash
+curl -X POST http://tmdb.local/revenue/predict_revenue -H "Content-Type: application/json" -d '...'
+```
+
+
+## 11. Evaluation 
 
 
 ---
