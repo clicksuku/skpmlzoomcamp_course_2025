@@ -18,6 +18,9 @@ Classify whether a movie will be **financially successful** (revenue exceeds bud
 ### Installation Steps
 ```
 git clone https://github.com/clicksuku/skpmlzoomcamp_course_2025.git
+```
+
+```
 bash -v setup.sh
 ```
 
