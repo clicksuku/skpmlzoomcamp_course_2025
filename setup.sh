@@ -16,9 +16,17 @@ mkdir _models
 cd Notebook
 jupytext *.ipynb --to py
 
+mv *.py ../Script
+cd ../Script
+mv notebook_Classification.py train_Classification.py
+mv notebook_Regression.py train_Regression.py
+
+cp train_Classification.py predict_Classification.py
+cp train_Regression.py predict_Regression.py
+
 ## Run the scripts 
-python notebook_Classification.py
-python notebook_Regression.py
+python train_Classification.py
+python train_Regression.py
 
 
 ## Deactivate after installation

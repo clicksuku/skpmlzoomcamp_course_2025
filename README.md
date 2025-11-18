@@ -12,7 +12,104 @@ Classify whether a movie will be **financially successful** (revenue exceeds bud
 
 ---
 
-## 2. Dataset Details
+## 2. Installation and Running the Project
+
+
+### Installation Steps
+```
+git clone https://github.com/clicksuku/skpmlzoomcamp_course_2025.git
+bash -v setup.sh
+```
+
+### Local Deployment and Run
+```bash
+cd Script
+source mlenv/bin/activate
+uvicorn api_model_server:app --host 0.0.0.0 --port 8000
+```
+
+### Local Testing
+```bash
+
+cd Script
+source mlenv/bin/activate
+python api_client.py
+```
+
+### Docker Deployment and testing
+
+### Dockerfile
+```dockerfile
+FROM python:3.9-slim
+
+WORKDIR /app
+RUN mkdir -p /app/_models
+
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY *.bin /app/_models/
+COPY *.py /app/
+
+CMD ["uvicorn", "api_model_server:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+
+### Deployment Commands
+Go to the path where Dockerfile is present
+
+```bash
+# Build and run
+docker build -t skpmlzoomcamp .
+docker run -p 8000:8000 skpmlzoomcamp:latest
+
+```
+
+### Testing
+
+```bash
+cd Script
+source mlenv/bin/activate
+python api_client.py
+```
+
+
+### Installation
+- Run the setup.sh script to set up the virtual environment and install dependencies
+- Activate the virtual environment and run the training scripts
+
+### Running the Project
+- Run the api_model_server.py script to start the FastAPI server
+- Use the predict_revenue and predict_hit endpoints to make predictions
+
+
+### Running the Tests
+
+1. **Start the API Server**:
+```bash
+uvicorn api_model_server:app --reload --host 0.0.0.0 --port 8000
+```
+
+2. **Run Client Tests**:
+```bash
+python api_client.py
+```
+
+
+-----
+
+## 2. Dataset Details and Project Files Details
+
+### Project Files
+
+- `setup.sh` - Script to set up the virtual environment and install dependencies
+- `README.md` - Project documentation
+- `requirements.txt` - List of Python packages required for the project
+- `Data/` - Directory containing the dataset files
+- `_models/` - Directory containing the trained models. This is created by running the setup.sh scripts
+- `Notebook/` - Directory containing Jupyter notebooks for data analysis and model development
+- `Script/` - Directory containing the scripts for training and prediction
+- `mlenv/` - Virtual environment directory
 
 ### Data Source
 - **Dataset**: TMDB 5000 Movies Dataset
@@ -60,7 +157,9 @@ Classify whether a movie will be **financially successful** (revenue exceeds bud
 - **Log Transformation**: Applied to budget and revenue for better model performance
 - **Feature Engineering**: Created binary success indicator for classification
 
-## 3. Regression Model
+
+
+## 4. Regression Model
 
 ### Target Variable
 - `log_revenue` (log-transformed revenue for better model performance)
@@ -307,65 +406,8 @@ uvicorn
 tqdm
 ```
 
-### Installation Steps
-```
-git clone https://github.com/clicksuku/skpmlzoomcamp_course_2025.git
-bash -v setup.sh
-```
 
-### Local Deployment and Run
-```bash
-cd _scripts
-source mlenv/bin/activate
-uvicorn api_model_server:app --host 0.0.0.0 --port 8000
-```
-
-### Local Testing
-```bash
-
-cd _scripts
-source mlenv/bin/activate
-python api_client.py
-```
-
-## 9. Docker Deployment
-
-### Dockerfile
-```dockerfile
-FROM python:3.9-slim
-
-WORKDIR /app
-RUN mkdir -p /app/_models
-
-COPY requirements.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY *.bin /app/_models/
-COPY *.py /app/
-
-CMD ["uvicorn", "api_model_server:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-
-### Deployment Commands
-Go to the path where Dockerfile is present
-
-```bash
-# Build and run
-docker build -t skpmlzoomcamp .
-docker run -p 8000:8000 skpmlzoomcamp:latest
-
-```
-### Testing
-
-```bash
-cd _scripts
-source mlenv/bin/activate
-python api_client.py
-```
-
-
-## 10. FastAPI Model Serving & Testing
+## 9. FastAPI Model Serving & Testing
 
 ### FastAPI Application (api_model_server.py)
 ```python
@@ -505,21 +547,10 @@ for index,row in df_new_data.iterrows():
     print("\n\n")
 ```
 
-### Running the Tests
 
-1. **Start the API Server**:
-```bash
-uvicorn api_model_server:app --reload --host 0.0.0.0 --port 8000
-```
 
-2. **Run Client Tests**:
-```bash
-python api_client.py
-```
+## 10. Evaluation 
 
-## Evaluation 
-
-Here’s your content rewritten in **Markdown (MD)** format with clear structure and proper checkmarks ✅ for the selected scores:
 
 ---
 
