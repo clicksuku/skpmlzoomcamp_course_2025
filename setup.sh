@@ -11,13 +11,14 @@ pip install -r requirements.txt
 ## Create models directory
 mkdir _models
 
+
 ## Python Conversion
-jupytext SKP_MidTerm_Project_Regression.ipynb --to py
-jupytext SKP_MidTerm_Project_Classification.ipynb --to py
+cd Notebook
+jupytext *.ipynb --to py
 
 ## Run the scripts 
-python SKP_MidTerm_Project_Regression.py
-python SKP_MidTerm_Project_Classification.py
+python notebook_Classification.py
+python notebook_Regression.py
 
 
 ## Deactivate after installation
